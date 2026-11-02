@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rádio Comunitária Digital - Player & Estúdio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            purple: '#8b5cf6',
+                            pink: '#ec4899',
+                            cyan: '#06b6d4',
+                            dark: '#0f172a',
+                            panel: '#1e293b'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px #8b5cf6, 0 0 10px #8b5cf6' },
+                            '100%': { boxShadow: '0 0 15px #ec4899, 0 0 25px #ec4899' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-panel-glow {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(139, 92, 246, 0.15);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b5cf6;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between antialiased selection:bg-brand-purple selection:text-white">
+
+    <!-- Top Header Navigation -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <!-- Logo & Station Name -->
+            <div class="flex items-center space-x-3">
+                <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-purple to-brand-pink text-white font-bold text-xl shadow-lg shadow-brand-purple/30">
+                    <i class="fa-solid font-orbitron">R</i>
+                    <span class="absolute -bottom-1 -right-1 flex h-3 w-3">
+                        <span id="onAirPing" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span id="onAirDot" class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                </div>
+                <div>
+                    <h1 class="font-orbitron font-bold text-lg md:text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-brand-cyan">
+                        VOZ DA COMUNIDADE <span class="text-xs px-2 py-0.5 rounded bg-brand-purple/30 text-brand-purple border border-brand-purple/40">98.5 FM WEB</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">A Rádio que conecta nosso bairro com o mundo</p>
+                </div>
+            </div>
+
+            <!-- View Switcher Tabs -->
+            <nav class="flex items-center p-1 bg-slate-900/80 rounded-xl border border-slate-800">
+                <button id="btnViewListener" onclick="switchView('listener')" class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-purple text-white shadow-md shadow-brand-purple/30">
+                    <i class="fa-solid fa-headphones"></i>
+                    <span>Modo Ouvinte</span>
+                </button>
+                <button id="btnViewStudio" onclick="switchView('studio')" class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200">
+                    <i class="fa-solid fa-sliders"></i>
+                    <span>Estúdio / Locutor</span>
+                </button>
+            </nav>
+
+            <!-- Status Indicator -->
+            <div class="hidden md:flex items-center space-x-4">
+                <div class="text-right">
+                    <span class="block text-xs text-slate-400">Transmissão</span>
+                    <span id="broadcastStatusText" class="text-xs font-semibold text-emerald-400 flex items-center justify-end gap-1">
+                        <i class="fa-solid fa-circle text-[8px]"></i> AO VIVO
+                    </span>
+                </div>
+                <div class="text-right border-l border-slate-700 pl-4">
+                    <span class="block text-xs text-slate-400">Ouvintes Conectados</span>
+                    <span id="listenerCount" class="text-xs font-mono font-bold text-brand-cyan">1,248</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 lg:p-6 space-y-6">
+
+        <!-- ========================================== -->
+        <!-- 1. VISÃO DO OUVINTE (PLAYER & COMUNIDADE) -->
+        <!-- ========================================== -->
+        <div id="viewListener" class="space-y-6 transition-opacity duration-300">
+            <!-- Hero Player Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Main Player Display (8 Cols) -->
+                <div class="lg:col-span-8 glass-panel-glow rounded-3xl p-6 lg:p-8 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute -right-20 -bottom-20 w-80 h-80 bg-brand-purple/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="absolute -left-20 -top-20 w-80 h-80 bg-brand-cyan/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                    <!-- Top Bar: Current Show & Status -->
+                    <div class="flex justify-between items-center z-10">
+                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> TRANSMISSÃO ONLINE
+                        </span>
+                        <div class="flex items-center space-x-2">
+                            <button title="Compartilhar" onclick="copyStreamLink()" class="p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition">
+                                <i class="fa-solid fa-share-nodes"></i>
+                            </button>
+                            <button title="Modo Noturno/Claro" class="p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700 transition">
+                                <i class="fa-solid fa-moon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Middle Info: Album Art, Info & Canvas Visualizer -->
+                    <div class="my-6 grid grid-cols-1 md:grid-cols-12 gap-6 items-center z-10">
+                        <!-- Album Cover -->
+                        <div class="md:col-span-4 flex justify-center">
+                            <div class="relative group w-48 h-48 md:w-full md:h-48 rounded-2xl overflow-hidden shadow-2xl border border-slate-700/50">
+                                <img id="listenerAlbumArt" src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=60" alt="Capa da Música/Programa" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent flex items-end p-3">
+                                    <span id="listenerGenre" class="text-xs font-semibold text-brand-cyan uppercase tracking-wider">MPB & Culture</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Song & Show Metadata -->
+                        <div class="md:col-span-8 space-y-3 text-center md:text-left">
+                            <div class="inline-block px-2.5 py-0.5 rounded text-xs font-bold bg-brand-purple/20 text-brand-purple border border-brand-purple/30">
+                                <i class="fa-solid fa-microphone-lines mr-1"></i> PROGRAMA AO VIVO
+                            </div>
+                            <h2 id="listenerShowTitle" class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Manhã Comunitária & Informação</h2>
+                            <p id="listenerArtistTitle" class="text-lg text-slate-300 font-medium">Apresentação: Maria Santos & DJ Silva</p>
+                            
+                            <div class="flex items-center justify-center md:justify-start gap-4 text-xs text-slate-400 pt-2">
+                                <span><i class="fa-solid fa-clock text-brand-pink mr-1"></i> <span id="programTime">08:00 - 10:00</span></span>
+                                <span><i class="fa-solid fa-location-dot text-brand-cyan mr-1"></i> Estúdio Central</span>
+                            </div>
+
+                            <!-- Audio Visualizer Canvas -->
+                            <div class="pt-2">
+                                <canvas id="visualizerCanvas" class="w-full h-16 rounded-xl bg-slate-950/60 border border-slate-800/80"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Controls: Play, Volume & VU Meter -->
+                    <div class="pt-4 border-t border-slate-800/80 flex flex-col md:flex-row items-center justify-between gap-4 z-10">
+                        <div class="flex items-center space-x-4 w-full md:w-auto justify-center">
+                            <button id="btnListenerPlay" onclick="toggleMainAudio()" class="w-14 h-14 rounded-full bg-gradient-to-tr from-brand-purple to-brand-pink hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xl flex items-center justify-center shadow-lg shadow-brand-purple/40 hover:scale-105 transition transform active:scale-95">
+                                <i id="listenerPlayIcon" class="fa-solid fa-play ml-1"></i>
+                            </button>
+                            <div>
+                                <span class="block text-xs font-semibold text-slate-400">QUALIDADE DO ÁUDIO</span>
+                                <span class="text-sm font-mono text-emerald-400 font-medium">HD Stereo (320kbps)</span>
+                            </div>
+                        </div>
+
+                        <!-- Volume Controls -->
+                        <div class="flex items-center space-x-3 w-full md:w-64 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800">
+                            <button onclick="toggleMute()" class="text-slate-400 hover:text-white transition">
+                                <i id="volumeIcon" class="fa-solid fa-volume-high"></i>
+                            </button>
+                            <input type="range" id="volumeSlider" min="0" max="100" value="80" oninput="changeVolume(this.value)" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-purple">
+                            <span id="volumeValue" class="text-xs font-mono text-slate-400 w-8 text-right">80%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Community Quick Noticeboard (4 Cols) -->
+                <div class="lg:col-span-4 glass-panel rounded-3xl p-6 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="font-orbitron font-bold text-md text-white flex items-center gap-2">
+                                <i class="fa-solid fa-bullhorn text-brand-pink"></i> Mural do Bairro
+                            </h3>
+                            <span class="text-xs text-brand-cyan font-medium">Eventos & Utility</span>
+                        </div>
+
+                        <div class="space-y-3 max-h-[340px] overflow-y-auto pr-1">
+                            <div class="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-xs font-bold text-brand-cyan">Feira Cultural de Sábado</span>
+                                    <span class="text-[10px] text-slate-400">Hoje 14:00</span>
+                                </div>
+                                <p class="text-xs text-slate-300">Praça Central terá apresentações musicais e feira de artesanato local. Entrada gratuita!</p>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-xs font-bold text-emerald-400">Campanha de Agasalho</span>
+                                    <span class="text-[10px] text-slate-400">Fixo</span>
+                                </div>
+                                <p class="text-xs text-slate-300">Ponto de coleta oficial aqui na sede da rádio comunitária. Participe doando roupas!</p>
+                            </div>
+
+                            <div class="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-xs font-bold text-amber-400">Vaga de Emprego Local</span>
+                                    <span class="text-[10px] text-slate-400">Ontem</span>
+                                </div>
+                                <p class="text-xs text-slate-300">Padaria do Bairro contrata atendente. Deixar currículo na Recepção com D. Marta.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="openNoticeModal()" class="w-full mt-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus text-brand-purple"></i> Enviar Aviso da Comunidade
+                    </button>
+                </div>
+            </div>
+
+            <!-- Schedule & Live Interactive Chat Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Programming Schedule (7 Cols) -->
+                <div class="lg:col-span-7 glass-panel rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-orbitron font-bold text-md text-white flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-days text-brand-purple"></i> Grade de Programação Hoje
+                        </h3>
+                        <span class="text-xs text-slate-400">Programação Comunitária</span>
+                    </div>
+
+                    <div class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1" id="scheduleList">
+                        <!-- Populated dynamically via JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Listener Live Chat & Song Requests (5 Cols) -->
+                <div class="lg:col-span-5 glass-panel rounded-3xl p-6 flex flex-col h-[480px]">
+                    <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-800">
+                        <h3 class="font-orbitron font-bold text-md text-white flex items-center gap-2">
+                            <i class="fa-solid fa-comments text-brand-cyan"></i> Mural dos Ouvintes
+                        </h3>
+                        <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">Ao Vivo</span>
+                    </div>
+
+                    <!-- Chat Messages List -->
+                    <div id="chatMessages" class="flex-grow overflow-y-auto space-y-3 pr-1 text-xs mb-3">
+                        <!-- Mock Chat Messages -->
+                        <div class="bg-slate-800/40 p-2.5 rounded-xl border border-slate-700/40">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-brand-cyan">Carlos (Vila Nova)</span>
+                                <span class="text-[10px] text-slate-500">10:42</span>
+                            </div>
+                            <p class="text-slate-300">Bom dia rádio! Manda um abraço para o pessoal da rua 5!</p>
+                        </div>
+
+                        <div class="bg-slate-800/40 p-2.5 rounded-xl border border-slate-700/40">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-brand-pink">Ana Lúcia</span>
+                                <span class="text-[10px] text-slate-500">10:45</span>
+                            </div>
+                            <p class="text-slate-300">Toca aquela música do Tim Maia para animar o trabalho aqui na oficina!</p>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input Form -->
+                    <form onsubmit="sendChatMessage(event)" class="space-y-2">
+                        <div class="grid grid-cols-3 gap-2">
+                            <input type="text" id="chatName" placeholder="Seu Nome/Bairro" required class="col-span-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-purple">
+                            <input type="text" id="chatMsg" placeholder="Mande seu recado ou pedido..." required class="col-span-2 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-brand-purple">
+                        </div>
+                        <button type="submit" class="w-full py-2 bg-gradient-to-r from-brand-purple to-brand-cyan hover:opacity-90 font-semibold text-white rounded-lg text-xs transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> Enviar Mensagem para o Locutor
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- 2. VISÃO DO LOCUTOR / ESTÚDIO (AUTOMAÇÃO)  -->
+        <!-- ========================================== -->
+        <div id="viewStudio" class="hidden space-y-6 transition-opacity duration-300">
+            <!-- Studio Control Header Bar -->
+            <div class="glass-panel-glow rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <div id="studioLiveBadge" class="px-4 py-1.5 rounded-lg bg-red-600 text-white font-orbitron font-bold text-sm animate-pulse flex items-center gap-2">
+                        <i class="fa-solid fa-tower-broadcast"></i> ESTÚDIO NO AR
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">Mesa de Automação & Broadcast</h3>
+                        <p class="text-xs text-slate-400">Controle total de vinhetas, microfone e playlists</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <!-- TALKOVER MICROPHONE BUTTON -->
+                    <button id="btnTalkover" onclick="toggleTalkover()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold text-xs transition flex items-center gap-2">
+                        <i class="fa-solid fa-microphone text-emerald-400 text-base"></i>
+                        <span>TALKOVER (MIC)</span>
+                        <span id="micBadge" class="w-2 h-2 rounded-full bg-slate-500"></span>
+                    </button>
+
+                    <!-- AutoDJ Mode Switch -->
+                    <button id="btnAutoDj" onclick="toggleAutoDJ()" class="px-4 py-2 rounded-xl bg-brand-purple text-white font-bold text-xs transition flex items-center gap-2">
+                        <i class="fa-solid fa-robot"></i>
+                        <span>AUTO-DJ: <span id="autoDjStatus">ATIVADO</span></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- DJ Decks (Deck A & Deck B with Crossfader) -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                <!-- DECK A -->
+                <div class="md:col-span-5 glass-panel rounded-3xl p-5 border-l-4 border-l-brand-purple">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-orbitron font-bold text-sm text-brand-purple">DECK A</span>
+                        <span id="deckATime" class="font-mono text-xs text-slate-400">00:00 / 03:45</span>
+                    </div>
+
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 mb-4">
+                        <h4 id="deckATitle" class="font-bold text-sm text-white truncate">Samba da Minha Terra - MPB Clássicos</h4>
+                        <p id="deckAArtist" class="text-xs text-slate-400 truncate">Artista Local Independente</p>
+                    </div>
+
+                    <!-- Controls Deck A -->
+                    <div class="flex items-center justify-between">
+                        <button onclick="playDeck('A')" class="w-10 h-10 rounded-full bg-brand-purple text-white flex items-center justify-center font-bold">
+                            <i id="deckAIcon" class="fa-solid fa-play"></i>
+                        </button>
+                        <input type="range" id="deckAVolume" min="0" max="100" value="80" oninput="setDeckVolume('A', this.value)" class="w-1/2 h-1.5 bg-slate-700 rounded accent-brand-purple">
+                        <span class="text-xs font-mono text-slate-400">Vol</span>
+                    </div>
+                </div>
+
+                <!-- CROSSFADER MIDDLE -->
+                <div class="md:col-span-2 glass-panel rounded-3xl p-4 flex flex-col justify-center items-center">
+                    <span class="text-[10px] font-orbitron font-bold text-slate-400 mb-2">CROSSFADER</span>
+                    <input type="range" id="crossfader" min="-100" max="100" value="0" oninput="adjustCrossfader(this.value)" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-brand-cyan">
+                    <div class="flex justify-between w-full text-[10px] font-bold text-slate-500 mt-2">
+                        <span>A</span>
+                        <span>MID</span>
+                        <span>B</span>
+                    </div>
+                </div>
+
+                <!-- DECK B -->
+                <div class="md:col-span-5 glass-panel rounded-3xl p-5 border-r-4 border-r-brand-cyan">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-orbitron font-bold text-sm text-brand-cyan">DECK B</span>
+                        <span id="deckBTime" class="font-mono text-xs text-slate-400">00:00 / 04:10</span>
+                    </div>
+
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 mb-4">
+                        <h4 id="deckBTitle" class="font-bold text-sm text-white truncate">Entrevista: Liderança do Bairro</h4>
+                        <p id="deckBArtist" class="text-xs text-slate-400 truncate">Jornalismo Comunitário</p>
+                    </div>
+
+                    <!-- Controls Deck B -->
+                    <div class="flex items-center justify-between">
+                        <button onclick="playDeck('B')" class="w-10 h-10 rounded-full bg-brand-cyan text-white flex items-center justify-center font-bold">
+                            <i id="deckBIcon" class="fa-solid fa-play"></i>
+                        </button>
+                        <input type="range" id="deckBVolume" min="0" max="100" value="80" oninput="setDeckVolume('B', this.value)" class="w-1/2 h-1.5 bg-slate-700 rounded accent-brand-cyan">
+                        <span class="text-xs font-mono text-slate-400">Vol</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cartucheira de Efeitos (Soundboard) & Playlist Studio -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- SOUNDBOARD / CARTUCHEIRA (6 Cols) -->
+                <div class="lg:col-span-6 glass-panel rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-orbitron font-bold text-md text-white flex items-center gap-2">
+                            <i class="fa-solid fa-bolt text-amber-400"></i> Cartucheira de Efeitos / Vinhetas
+                        </h3>
+                        <span class="text-xs text-slate-400">Disparo Instantâneo</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <button onclick="playSoundEffect('vinheta_radio')" class="p-3 rounded-xl bg-slate-800 hover:bg-brand-purple/30 border border-slate-700 hover:border-brand-purple transition text-left group">
+                            <div class="text-xs font-bold text-white group-hover:text-brand-purple flex items-center gap-1.5">
+                                <i class="fa-solid fa-radio text-brand-purple"></i> Vinheta Rádio
+                            </div>
+                            <span class="text-[10px] text-slate-500">Identificador 01</span>
+                        </button>
+
+                        <button onclick="playSoundEffect('vinheta_noticia')" class="p-3 rounded-xl bg-slate-800 hover:bg-brand-pink/30 border border-slate-700 hover:border-brand-pink transition text-left group">
+                            <div class="text-xs font-bold text-white group-hover:text-brand-pink flex items-center gap-1.5">
+                                <i class="fa-solid fa-newspaper text-brand-pink"></i> Plantão Notícia
+                            </div>
+                            <span class="text-[10px] text-slate-500">Urgente</span>
+                        </button>
+
+                        <button onclick="playSoundEffect('applause')" class="p-3 rounded-xl bg-slate-800 hover:bg-emerald-500/30 border border-slate-700 hover:border-emerald-500 transition text-left group">
+                            <div class="text-xs font-bold text-white group-hover:text-emerald-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-hands-clapping text-emerald-400"></i> Aplausos
+                            </div>
+                            <span class="text-[10px] text-slate-500">Plateia</span>
+                        </button>
+
+                        <button onclick="playSoundEffect('laughter')" class="p-3 rounded-xl bg-slate-800 hover:bg-amber-500/30 border border-slate-700 hover:border-amber-500 transition text-left group">
+                            <div class="text-xs font-bold text-white group-hover:text-amber-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-face-laugh-beam text-amber-400"></i> Risadas
+                            </div>
+                            <span class="text-[10px] text-slate-500">Comédia</span>
+                        </button>
+
+                        <button onclick="playSoundEffect('commercial')" class="p-3 rounded-xl bg-slate-800 hover:bg-brand-cyan/30 border border-slate-700 hover:border-brand-cyan transition text-left group">
+                            <div class="text-xs font-bold text-white group-hover:text-brand-cyan flex items-center gap-1.5">
+                                <i class="fa-solid fa-store text-brand-cyan"></i> Comercial Bairro
+                            </div>
+                            <span class="text-[10px] text-slate-500">Apoio Local</span>
+                        </button>
+
+                        <button onclick="playSoundEffect('horn')" class="p-3 rounded-xl bg-slate-800 hover:bg-rose-500/30 border border-slate-700 hover:border-rose-500 transition text-left group">
+                            <div class="text-xs font-bold text-white group-hover:text-rose-400 flex items-center gap-1.5">
+                                <i class="fa-solid fa-bullhorn text-rose-400"></i> Buzina / Alerta
+                            </div>
+                            <span class="text-[10px] text-slate-500">Efeito Sonoro</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- PLAYLIST MANAGEMENT (6 Cols) -->
+                <div class="lg:col-span-6 glass-panel rounded-3xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-orbitron font-bold text-md text-white flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-brand-cyan"></i> Fila de Reprodução (Playlist)
+                        </h3>
+                        <button onclick="addTrackPrompt()" class="text-xs text-brand-cyan hover:underline flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Adicionar Faixa
+                        </button>
+                    </div>
+
+                    <div class="space-y-2 max-h-[220px] overflow-y-auto pr-1" id="studioPlaylist">
+                        <!-- Populated Dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="glass-panel border-t border-slate-800 mt-8 py-4 px-6 text-center text-xs text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <p>© 2026 Rádio Comunitária Digital - Voz do Bairro. Sem fins lucrativos.</p>
+            <p class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Servidor de Streaming Operacional
+            </p>
+        </div>
+    </footer>
+
+    <!-- MODAL PARA ENVIAR AVISO DA COMUNIDADE -->
+    <div id="noticeModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel-glow max-w-md w-full rounded-3xl p-6 relative">
+            <button onclick="closeNoticeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <h3 class="font-orbitron font-bold text-lg text-white mb-2">Enviar Aviso Comunitário</h3>
+            <p class="text-xs text-slate-400 mb-4">Publique eventos, vagas de emprego ou comunicados no mural da rádio.</p>
+
+            <form onsubmit="submitNotice(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Título do Aviso</label>
+                    <input type="text" id="noticeTitle" required placeholder="Ex: Feira de Troca de Livros" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-brand-purple">
+                </div>
+
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Categoria</label>
+                    <select id="noticeCategory" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-brand-purple">
+                        <option value="Cultural">Cultural / Eventos</option>
+                        <option value="Utilidade">Utilidade Pública</option>
+                        <option value="Emprego">Vaga de Emprego</option>
+                        <option value="Social">Ação Social</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-slate-300 font-semibold mb-1">Descrição Breve</label>
+                    <textarea id="noticeDesc" required rows="3" placeholder="Detalhes do aviso, data e local..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white focus:outline-none focus:border-brand-purple"></textarea>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-gradient-to-r from-brand-purple to-brand-pink text-white font-bold rounded-xl shadow-lg transition">
+                    Publicar no Mural
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC & AUDIO ENGINE -->
+    <script>
+        // ==========================================
+        // DATA STRUCTURES
+        // ==========================================
+        const scheduleData = [
+            { time: "06:00 - 08:00", name: "Alvorada Sertaneja e Campo", host: "Zé do Bairro", tag: "Música & Cultura" },
+            { time: "08:00 - 10:00", name: "Manhã Comunitária & Informação", host: "Maria Santos & DJ Silva", tag: "Ao Vivo", active: true },
+            { time: "10:00 - 12:00", name: "Vozes da Periferia (Hip Hop & Reggae)", host: "MC Lucas", tag: "Jovem" },
+            { time: "12:00 - 13:00", name: "Jornal do Bairro - Notícias Locais", host: "Redação Comunitária", tag: "Jornalismo" },
+            { time: "13:00 - 15:00", name: "Samba & Pagode de Todos os Tempos", host: "Tia Beth", tag: "Musical" },
+            { time: "15:00 - 18:00", name: "Tarde Jovem & Pedidos dos Ouvintes", host: "DJ Kiko", tag: "Interativo" }
+        ];
+
+        let playlist = [
+            { id: 1, title: "Samba da Minha Terra", artist: "MPB Clássicos", duration: "03:45" },
+            { id: 2, title: "Entrevista: Liderança do Bairro", artist: "Jornalismo Comunitário", duration: "04:10" },
+            { id: 3, title: "Hip Hop da Periferia", artist: "Grupo Rima Certa", duration: "03:15" },
+            { id: 4, title: "Vinheta Institucional 98.5 FM", artist: "Rádio Comunitária", duration: "00:15" }
+        ];
+
+        // ==========================================
+        // WEB AUDIO API ENGINE (SYNTHESIZER & FX)
+        // ==========================================
+        let audioCtx = null;
+        let isPlaying = false;
+        let isTalkoverActive = false;
+        let micStream = null;
+        let micSourceNode = null;
+        let mainGainNode = null;
+        let analyserNode = null;
+        let audioOscillator = null;
+
+        function initAudioEngine() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+
+                analyserNode = audioCtx.createAnalyser();
+                analyserNode.fftSize = 64;
+
+                mainGainNode = audioCtx.createGain();
+                mainGainNode.gain.setValueAtTime(0.8, audioCtx.currentTime);
+
+                mainGainNode.connect(analyserNode);
+                analyserNode.connect(audioCtx.destination);
+            }
+        }
+
+        // Toggle Main Listener Audio (Generates smooth ambient music synth stream or plays real audio)
+        function toggleMainAudio() {
+            initAudioEngine();
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const btnIcon = document.getElementById('listenerPlayIcon');
+
+            if (!isPlaying) {
+                isPlaying = true;
+                btnIcon.className = "fa-solid fa-pause";
+                startSynthesizedRadioStream();
+                startCanvasVisualizer();
+            } else {
+                isPlaying = false;
+                btnIcon.className = "fa-solid fa-play ml-1";
+                stopSynthesizedRadioStream();
+            }
+        }
+
+        // Synthesize an aesthetic melodic radio tone loop using Web Audio API
+        function startSynthesizedRadioStream() {
+            if (audioOscillator) stopSynthesizedRadioStream();
+
+            const notes = [261.63, 293.66, 329.63, 392.00, 440.00]; // C, D, E, G, A
+            let step = 0;
+
+            audioOscillator = setInterval(() => {
+                if (!isPlaying || !audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const noteGain = audioCtx.createGain();
+
+                const freq = notes[step % notes.length];
+                osc.type = step % 2 === 0 ? 'sine' : 'triangle';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                noteGain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                noteGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.8);
+
+                osc.connect(noteGain);
+                noteGain.connect(mainGainNode);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.8);
+
+                step++;
+            }, 400);
+        }
+
+        function stopSynthesizedRadioStream() {
+            if (audioOscillator) {
+                clearInterval(audioOscillator);
+                audioOscillator = null;
+            }
+        }
+
+        // Volume & Mute Controls
+        function changeVolume(val) {
+            document.getElementById('volumeValue').innerText = val + '%';
+            if (mainGainNode && audioCtx) {
+                mainGainNode.gain.setValueAtTime(val / 100, audioCtx.currentTime);
+            }
+        }
+
+        function toggleMute() {
+            const slider = document.getElementById('volumeSlider');
+            const icon = document.getElementById('volumeIcon');
+            if (slider.value > 0) {
+                slider.value = 0;
+                icon.className = "fa-solid fa-volume-xmark text-red-400";
+                changeVolume(0);
+            } else {
+                slider.value = 80;
+                icon.className = "fa-solid fa-volume-high";
+                changeVolume(80);
+            }
+        }
+
+        // ==========================================
+        // CANVAS REAL-TIME SPECTRUM VISUALIZER
+        // ==========================================
+        let canvasAnimId = null;
+        function startCanvasVisualizer() {
+            const canvas = document.getElementById('visualizerCanvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            const bufferLength = analyserNode ? analyserNode.frequencyBinCount : 32;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function draw() {
+                canvasAnimId = requestAnimationFrame(draw);
+
+                if (analyserNode && isPlaying) {
+                    analyserNode.getByteFrequencyData(dataArray);
+                } else {
+                    // Idle animation
+                    for (let i = 0; i < bufferLength; i++) {
+                        dataArray[i] = Math.max(5, Math.sin(Date.now() * 0.005 + i) * 20 + 25);
+                    }
+                }
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const barWidth = (canvas.width / bufferLength) * 1.8;
+                let x = 0;
+
+                for (let i = 0; i < bufferLength; i++) {
+                    const barHeight = (dataArray[i] / 255) * canvas.height;
+
+                    // Gradient for Visualizer Bars
+                    const gradient = ctx.createLinearGradient(0, canvas.height, 0, 0);
+                    gradient.addColorStop(0, '#8b5cf6');
+                    gradient.addColorStop(0.5, '#ec4899');
+                    gradient.addColorStop(1, '#06b6d4');
+
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
+
+                    x += barWidth;
+                }
+            }
+
+            draw();
+        }
+
+        // ==========================================
+        // STUDIO AUTOMATION & SOUNDBOARD EFFECTS
+        // ==========================================
+        function playSoundEffect(type) {
+            initAudioEngine();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.connect(gainNode);
+            gainNode.connect(mainGainNode);
+
+            const now = audioCtx.currentTime;
+
+            switch(type) {
+                case 'vinheta_radio':
+                    // Sweeping chime
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.5);
+                    gainNode.gain.setValueAtTime(0.4, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+                    osc.start(now);
+                    osc.stop(now + 0.6);
+                    break;
+                case 'vinheta_noticia':
+                    // Beep alert
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(750, now);
+                    gainNode.gain.setValueAtTime(0.3, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                    break;
+                case 'applause':
+                case 'laughter':
+                case 'commercial':
+                case 'horn':
+                default:
+                    // Generic synthesized audio cue
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    gainNode.gain.setValueAtTime(0.3, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                    break;
+            }
+        }
+
+        // Microphone Talkover Toggle (getUserMedia)
+        async function toggleTalkover() {
+            initAudioEngine();
+            const btn = document.getElementById('btnTalkover');
+            const badge = document.getElementById('micBadge');
+
+            if (!isTalkoverActive) {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    micSourceNode = audioCtx.createMediaStreamSource(micStream);
+                    micSourceNode.connect(mainGainNode);
+
+                    // Lower background music volume for talkover (Ducking)
+                    if (mainGainNode) {
+                        mainGainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    }
+
+                    isTalkoverActive = true;
+                    btn.classList.add('border-emerald-500', 'bg-emerald-500/20');
+                    badge.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
+                } catch (err) {
+                    alert("Não foi possível acessar o microfone. Verifique as permissões no navegador.");
+                }
+            } else {
+                if (micStream) {
+                    micStream.getTracks().forEach(track => track.stop());
+                }
+                if (mainGainNode) {
+                    mainGainNode.gain.setValueAtTime(0.8, audioCtx.currentTime);
+                }
+                isTalkoverActive = false;
+                btn.classList.remove('border-emerald-500', 'bg-emerald-500/20');
+                badge.className = "w-2 h-2 rounded-full bg-slate-500";
+            }
+        }
+
+        function toggleAutoDJ() {
+            const statusLabel = document.getElementById('autoDjStatus');
+            const btn = document.getElementById('btnAutoDj');
+            if (statusLabel.innerText === 'ATIVADO') {
+                statusLabel.innerText = 'DESATIVADO';
+                btn.classList.replace('bg-brand-purple', 'bg-slate-800');
+            } else {
+                statusLabel.innerText = 'ATIVADO';
+                btn.classList.replace('bg-slate-800', 'bg-brand-purple');
+            }
+        }
+
+        function playDeck(deck) {
+            const icon = document.getElementById(`deck${deck}Icon`);
+            if (icon.classList.contains('fa-play')) {
+                icon.className = "fa-solid fa-pause";
+                initAudioEngine();
+                if(!isPlaying) toggleMainAudio();
+            } else {
+                icon.className = "fa-solid fa-play";
+            }
+        }
+
+        function setDeckVolume(deck, val) {
+            // Adjust volume for specific deck
+        }
+
+        function adjustCrossfader(val) {
+            // Crossfader balance logic (-100 Deck A to +100 Deck B)
+        }
+
+        // ==========================================
+        // UI INTERACTION & DOM RENDERING
+        // ==========================================
+        function switchView(view) {
+            const listenerView = document.getElementById('viewListener');
+            const studioView = document.getElementById('viewStudio');
+            const btnListener = document.getElementById('btnViewListener');
+            const btnStudio = document.getElementById('btnViewStudio');
+
+            if (view === 'listener') {
+                listenerView.classList.remove('hidden');
+                studioView.classList.add('hidden');
+                btnListener.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-purple text-white shadow-md shadow-brand-purple/30";
+                btnStudio.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200";
+            } else {
+                studioView.classList.remove('hidden');
+                listenerView.classList.add('hidden');
+                btnStudio.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 bg-brand-purple text-white shadow-md shadow-brand-purple/30";
+                btnListener.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-400 hover:text-white transition-all duration-200";
+            }
+        }
+
+        function renderSchedule() {
+            const container = document.getElementById('scheduleList');
+            container.innerHTML = scheduleData.map(item => `
+                <div class="p-3 rounded-2xl ${item.active ? 'bg-gradient-to-r from-brand-purple/20 to-brand-cyan/20 border border-brand-purple/40' : 'bg-slate-900/60 border border-slate-800'} flex items-center justify-between gap-3">
+                    <div class="flex items-center space-x-3">
+                        <span class="text-xs font-mono font-bold ${item.active ? 'text-brand-pink' : 'text-slate-400'}">${item.time}</span>
+                        <div>
+                            <h4 class="text-xs font-bold text-white">${item.name}</h4>
+                            <p class="text-[11px] text-slate-400">Locutor: ${item.host}</p>
+                        </div>
+                    </div>
+                    <span class="text-[10px] px-2 py-0.5 rounded font-semibold ${item.active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}">
+                        ${item.active ? 'NO AR AGORA' : item.tag}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function renderStudioPlaylist() {
+            const container = document.getElementById('studioPlaylist');
+            container.innerHTML = playlist.map((track, idx) => `
+                <div class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 flex items-center justify-between gap-2 text-xs">
+                    <div class="flex items-center space-x-3 truncate">
+                        <span class="font-mono text-slate-500 font-bold">${idx + 1}</span>
+                        <div class="truncate">
+                            <span class="font-bold text-white truncate block">${track.title}</span>
+                            <span class="text-[10px] text-slate-400 truncate block">${track.artist}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-mono text-[10px] text-slate-400">${track.duration}</span>
+                        <button onclick="removePlaylistTrack(${track.id})" class="text-slate-500 hover:text-red-400">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function sendChatMessage(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('chatName');
+            const msgInput = document.getElementById('chatMsg');
+            const chatContainer = document.getElementById('chatMessages');
+
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+            const newMsgHtml = `
+                <div class="bg-brand-purple/10 p-2.5 rounded-xl border border-brand-purple/30">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold text-brand-purple">${escapeHTML(nameInput.value)}</span>
+                        <span class="text-[10px] text-slate-500">${timeStr}</span>
+                    </div>
+                    <p class="text-slate-200">${escapeHTML(msgInput.value)}</p>
+                </div>
+            `;
+
+            chatContainer.insertAdjacentHTML('beforeend', newMsgHtml);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            msgInput.value = '';
+        }
+
+        function addTrackPrompt() {
+            const title = prompt("Título da Faixa:");
+            const artist = prompt("Artista / Apresentador:");
+            if (title && artist) {
+                playlist.push({
+                    id: Date.now(),
+                    title: title,
+                    artist: artist,
+                    duration: "03:30"
+                });
+                renderStudioPlaylist();
+            }
+        }
+
+        function removePlaylistTrack(id) {
+            playlist = playlist.filter(t => t.id !== id);
+            renderStudioPlaylist();
+        }
+
+        function openNoticeModal() {
+            document.getElementById('noticeModal').classList.remove('hidden');
+        }
+
+        function closeNoticeModal() {
+            document.getElementById('noticeModal').classList.add('hidden');
+        }
+
+        function submitNotice(e) {
+            e.preventDefault();
+            alert("Aviso enviado com sucesso! Passará pela moderação da rádio antes de ir ao ar.");
+            closeNoticeModal();
+        }
+
+        function copyStreamLink() {
+            document.execCommand('copy');
+            alert("Link do streaming copiado para a área de transferência!");
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Initialize UI Elements on Page Load
+        window.onload = function() {
+            renderSchedule();
+            renderStudioPlaylist();
+            startCanvasVisualizer();
+        };
+    </script>
+</body>
+</html>
